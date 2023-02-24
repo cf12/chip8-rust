@@ -1,0 +1,12 @@
+[package]
+name = "chip8-rust"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+members = [
+    "chip8",
+    "sdl",
+]
+
+[dependencies]
