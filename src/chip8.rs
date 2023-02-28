@@ -32,6 +32,7 @@ const FONTSET: [u8; FONTSET_SIZE] = [
     0xF0, 0x80, 0xF0, 0x80, 0x80, // F
 ];
 
+#[derive(Clone, Debug)]
 pub struct Chip8 {
     mem: [u8; MEMORY_SIZE],
     reg: [u8; NUM_REGS],

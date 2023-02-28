@@ -3,11 +3,6 @@ name = "chip8-rust"
 version = "0.1.0"
 edition = "2021"
 
-[workspace]
-members = [
-    "chip8",
-    "sdl",
-]
-
 [dependencies]
-chip8 = { path = "./chip8" }
+rand = "0.8.5"
+rand_chacha = "0.3.1"

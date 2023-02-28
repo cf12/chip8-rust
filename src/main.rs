@@ -1,5 +1,7 @@
-use chip8::Chip8;
+mod chip8;
+
 use std::env;
+use chip8::Chip8;
 
 fn main() {
     let args: Vec<_> = env::args().collect();
