@@ -1,9 +1,10 @@
-use rand::prelude::*;
-use rand_chacha::ChaCha8Rng;
+use core::fmt;
 use std::{borrow::BorrowMut, fs};
 
-const VIDEO_WIDTH: usize = 64;
-const VIDEO_HEIGHT: usize = 32;
+use sdl2::libc::write;
+
+pub const VIDEO_WIDTH: usize = 64;
+pub const VIDEO_HEIGHT: usize = 32;
 
 const MEMORY_SIZE: usize = 4096;
 const MEMORY_START: u16 = 0x200;
@@ -32,7 +33,7 @@ const FONTSET: [u8; FONTSET_SIZE] = [
     0xF0, 0x80, 0xF0, 0x80, 0x80, // F
 ];
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone)]
 pub struct Chip8 {
     mem: [u8; MEMORY_SIZE],
     reg: [u8; NUM_REGS],
@@ -47,11 +48,27 @@ pub struct Chip8 {
     dt: u8,
     st: u8,
 
-    rng: ChaCha8Rng,
+    rng: fn() -> u8,
+}
+
+impl fmt::Display for Chip8 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (i, reg) in self.reg.iter().enumerate() {
+            write!(f, "[v{:X}]: {:#02X}\n", i, reg)?;
+        }
+
+        let op =
+            ((self.mem[self.pc as usize] as u16) << 8) | (self.mem[(self.pc + 1) as usize] as u16);
+
+        write!(f, "[pc]: {:#02X}\n", self.pc)?;
+        write!(f, "[sp]: {:#02X}\n", self.sp)?;
+        write!(f, "[i]: {:#02X}\n", self.i)?;
+        write!(f, "[opcode]: {:#04X}\n", op)
+    }
 }
 
 impl Chip8 {
-    pub fn new() -> Chip8 {
+    pub fn new(rng: fn() -> u8) -> Chip8 {
         let mut new_emu = Chip8 {
             mem: [0; MEMORY_SIZE],
             reg: [0; NUM_REGS],
@@ -66,25 +83,36 @@ impl Chip8 {
             dt: 0,
             st: 0,
 
-            // TODO: remove hardcoded seed
-            rng: ChaCha8Rng::seed_from_u64(12345),
+            rng: rng,
         };
 
         new_emu.mem[..FONTSET_SIZE].copy_from_slice(&FONTSET);
         new_emu
     }
 
+    pub fn load_rom(&mut self, path: &String) {
+        let data = fs::read(path).expect("Cannot read ROM file");
+        self.mem[(MEMORY_START as usize)..((MEMORY_START as usize) + data.len())]
+            .copy_from_slice(&data);
+    }
+
+    pub fn get_video(&self) -> &[bool] {
+        return &self.video;
+    }
+
     pub fn cycle(&mut self) {
+        println!("{}", &self);
+
         let op =
             ((self.mem[self.pc as usize] as u16) << 8) | (self.mem[(self.pc + 1) as usize] as u16);
 
         self.pc += 2;
 
-        let b1 = op & 0xF000;
+        let b1 = (op & 0xF000) >> 12;
         #[allow(non_snake_case)]
-        let Vx = (op & 0x0F00) as usize;
+        let Vx = ((op & 0x0F00) >> 8) as usize;
         #[allow(non_snake_case)]
-        let Vy = (op & 0x00F0) as usize;
+        let Vy = ((op & 0x00F0) >> 4) as usize;
         let addr = op & 0x0FFF;
         let byte = (op & 0x00FF) as u8;
         let n = op & 0x000F;
@@ -98,7 +126,7 @@ impl Chip8 {
                     }
 
                     // 00EE - RET
-                    0x00EE => {
+                    0x0EE => {
                         self.sp -= 1;
                         self.pc = self.stack[self.sp as usize];
                     }
@@ -232,7 +260,7 @@ impl Chip8 {
 
             // Cxkk - RND Vx, byte
             0xC => {
-                self.reg[Vx] = self.rng.gen::<u8>() & byte;
+                self.reg[Vx] = (self.rng)() & byte;
             }
 
             // Dxyn - DRW Vx, Vy, nibble
@@ -283,7 +311,7 @@ impl Chip8 {
                     }
 
                     _ => {
-                        panic!("Invalid instruction: {:?}", op);
+                        panic!("Invalid instruction: {:#04X}", op);
                     }
                 }
             }
@@ -355,11 +383,13 @@ impl Chip8 {
                     }
 
                     _ => {
-                        panic!("Invalid instruction: {:?}", op);
+                        panic!("Invalid instruction: {:#04X}", op);
                     }
                 }
             }
-            _ => {}
+            _ => {
+                panic!("Invalid instruction: {:#04X}", op);
+            }
         }
 
         if self.dt > 0 {
@@ -368,11 +398,5 @@ impl Chip8 {
         if self.st > 0 {
             self.st -= 1;
         }
-    }
-
-    pub fn load_rom(&mut self, path: &String) {
-        let data = fs::read(path).expect("Cannot read ROM file");
-        self.mem[(MEMORY_START as usize)..((MEMORY_START as usize) + data.len())]
-            .copy_from_slice(&data);
     }
 }
