@@ -10,3 +10,4 @@ members = [
 ]
 
 [dependencies]
+chip8 = { path = "./chip8" }
