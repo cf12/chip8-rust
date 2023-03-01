@@ -1,18 +1,16 @@
 use core::fmt;
 use std::{borrow::BorrowMut, fs};
 
-use sdl2::libc::write;
-
 pub const VIDEO_WIDTH: usize = 64;
 pub const VIDEO_HEIGHT: usize = 32;
 
 const MEMORY_SIZE: usize = 4096;
-const MEMORY_START: u16 = 0x200;
+const MEMORY_START: usize = 0x200;
 const STACK_SIZE: usize = 16;
 const NUM_KEYS: usize = 16;
 const NUM_REGS: usize = 16;
 
-const FONTSET_START_ADDRESS: u16 = 0x50;
+const FONTSET_START_ADDRESS: usize = 0x50;
 const FONTSET_SIZE: usize = 5 * 16;
 const FONTSET: [u8; FONTSET_SIZE] = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -74,7 +72,7 @@ impl Chip8 {
             reg: [0; NUM_REGS],
 
             i: 0,
-            pc: MEMORY_START,
+            pc: MEMORY_START as u16,
             sp: 0,
             stack: [0; STACK_SIZE],
             video: [false; VIDEO_HEIGHT * VIDEO_WIDTH],
@@ -86,7 +84,8 @@ impl Chip8 {
             rng: rng,
         };
 
-        new_emu.mem[..FONTSET_SIZE].copy_from_slice(&FONTSET);
+        new_emu.mem[FONTSET_START_ADDRESS as usize..FONTSET_START_ADDRESS as usize + FONTSET_SIZE]
+            .copy_from_slice(&FONTSET);
         new_emu
     }
 
@@ -275,6 +274,8 @@ impl Chip8 {
                 for dy in 0..height as u8 {
                     let sprite = self.mem[((self.i as u8) + dy) as usize];
 
+                    println!("{:08b}", sprite);
+
                     for dx in 0..8 as u8 {
                         let sprite_pixel = (sprite >> (7 - dx)) & 1;
                         let video_pixel = self.video
@@ -354,7 +355,7 @@ impl Chip8 {
                     0x29 => {
                         let digit = self.reg[Vx];
 
-                        self.i = (FONTSET_START_ADDRESS + digit as u16 * 5) as usize;
+                        self.i = (FONTSET_START_ADDRESS as u16 + digit as u16 * 5) as usize;
                     }
 
                     // Fx33 - LD B, Vx
