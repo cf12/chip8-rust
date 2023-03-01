@@ -99,16 +99,17 @@ impl Chip8 {
     }
 
     pub fn cycle(&mut self) {
-        println!("{}", &self);
-
+        // println!("{}", &self);
         let op =
             ((self.mem[self.pc as usize] as u16) << 8) | (self.mem[(self.pc + 1) as usize] as u16);
 
         self.pc += 2;
 
         let b1 = (op & 0xF000) >> 12;
-        let vx = ((op & 0x0F00) >> 8) as usize;
-        let vy = ((op & 0x00F0) >> 4) as usize;
+        #[allow(non_snake_case)]
+        let Vx = ((op & 0x0F00) >> 8) as usize;
+        #[allow(non_snake_case)]
+        let Vy = ((op & 0x00F0) >> 4) as usize;
         let addr = op & 0x0FFF;
         let byte = (op & 0x00FF) as u8;
         let n = op & 0x000F;
@@ -122,10 +123,10 @@ impl Chip8 {
                     }
 
                     // 00EE - RET
-                    // 0x0EE => {
-                    //     self.sp -= 1;
-                    //     self.pc = self.stack[self.sp as usize];
-                    // }
+                    0x0EE => {
+                        self.sp -= 1;
+                        self.pc = self.stack[self.sp as usize];
+                    }
 
                     // 0nnn - SYS addr
                     _ => {}
@@ -138,110 +139,110 @@ impl Chip8 {
             }
 
             // 2nnn - CALL addr
-            // 0x2 => {
-            //     self.stack[self.sp as usize] = self.pc;
-            //     self.sp += 1;
-            //     self.pc = addr;
-            // }
+            0x2 => {
+                self.stack[self.sp as usize] = self.pc;
+                self.sp += 1;
+                self.pc = addr;
+            }
 
             // 3xkk - SE Vx, byte
-            // 0x3 => {
-            //     if self.reg[Vx] == byte {
-            //         self.pc += 2
-            //     };
-            // }
+            0x3 => {
+                if self.reg[Vx] == byte {
+                    self.pc += 2
+                };
+            }
 
             // 4xkk - SNE Vx, byte
-            // 0x4 => {
-            //     if self.reg[Vx] != byte {
-            //         self.pc += 2
-            //     };
-            // }
+            0x4 => {
+                if self.reg[Vx] != byte {
+                    self.pc += 2
+                };
+            }
 
             // 5xy0 - SE Vx, Vy
-            // 0x5 => {
-            //     if self.reg[Vx] == self.reg[Vy] {
-            //         self.pc += 2
-            //     };
-            // }
+            0x5 => {
+                if self.reg[Vx] == self.reg[Vy] {
+                    self.pc += 2
+                };
+            }
 
             // 6xkk - LD Vx, byte
             0x6 => {
-                self.reg[vx] = byte;
+                self.reg[Vx] = byte;
             }
 
             // 7xkk - ADD Vx, byte
             0x7 => {
-                self.reg[vx] = self.reg[vx].wrapping_add(byte);
+                self.reg[Vx] = self.reg[Vx].wrapping_add(byte);
             }
 
-            // 0x8 => {
-            //     match n {
-            //         0x0 => {
-            //             self.reg[Vx] = self.reg[Vy];
-            //         }
+            0x8 => {
+                match n {
+                    0x0 => {
+                        self.reg[Vx] = self.reg[Vy];
+                    }
 
-            //         // 8xy1 - OR Vx, Vy
-            //         0x1 => {
-            //             self.reg[Vx] |= self.reg[Vy];
-            //         }
+                    // 8xy1 - OR Vx, Vy
+                    0x1 => {
+                        self.reg[Vx] |= self.reg[Vy];
+                    }
 
-            //         // 8xy2 - AND Vx, Vy
-            //         0x2 => {
-            //             self.reg[Vx] &= self.reg[Vy];
-            //         }
+                    // 8xy2 - AND Vx, Vy
+                    0x2 => {
+                        self.reg[Vx] &= self.reg[Vy];
+                    }
 
-            //         // 8xy3 - XOR Vx, Vy
-            //         0x3 => {
-            //             self.reg[Vx] ^= self.reg[Vy];
-            //         }
+                    // 8xy3 - XOR Vx, Vy
+                    0x3 => {
+                        self.reg[Vx] ^= self.reg[Vy];
+                    }
 
-            //         // 8xy4 - ADD Vx, Vy
-            //         0x4 => {
-            //             let (res, carry) = self.reg[Vx].overflowing_add(self.reg[Vy]);
+                    // 8xy4 - ADD Vx, Vy
+                    0x4 => {
+                        let (res, carry) = self.reg[Vx].overflowing_add(self.reg[Vy]);
 
-            //             self.reg[Vx] = res;
-            //             self.reg[0xF] = carry as u8;
-            //         }
+                        self.reg[Vx] = res;
+                        self.reg[0xF] = carry as u8;
+                    }
 
-            //         // 8xy5 - SUB Vx, Vy
-            //         0x5 => {
-            //             let (res, carry) = self.reg[Vx].overflowing_sub(self.reg[Vy]);
-            //             self.reg[Vx] = res;
-            //             self.reg[0xF] = carry as u8;
-            //         }
+                    // 8xy5 - SUB Vx, Vy
+                    0x5 => {
+                        let (res, carry) = self.reg[Vx].overflowing_sub(self.reg[Vy]);
+                        self.reg[Vx] = res;
+                        self.reg[0xF] = carry as u8;
+                    }
 
-            //         // 8xy6 - SHR Vx {, Vy}
-            //         0x6 => {
-            //             self.reg[0xF] = self.reg[Vx] & 1;
-            //             self.reg[Vx] = self.reg[Vx] >> 1;
-            //         }
+                    // 8xy6 - SHR Vx {, Vy}
+                    0x6 => {
+                        self.reg[0xF] = self.reg[Vx] & 1;
+                        self.reg[Vx] = self.reg[Vx] >> 1;
+                    }
 
-            //         // 8xy7 - SUBN Vx, Vy
-            //         0x7 => {
-            //             let (res, carry) = self.reg[Vy].overflowing_sub(self.reg[Vx]);
-            //             self.reg[Vx] = res;
-            //             self.reg[0xF] = carry as u8;
-            //         }
+                    // 8xy7 - SUBN Vx, Vy
+                    0x7 => {
+                        let (res, carry) = self.reg[Vy].overflowing_sub(self.reg[Vx]);
+                        self.reg[Vx] = res;
+                        self.reg[0xF] = carry as u8;
+                    }
 
-            //         // 8xyE - SHL Vx {, Vy}
-            //         0xE => {
-            //             self.reg[0xF] = (self.reg[Vx] >> 7) & 1;
-            //             self.reg[Vx] = self.reg[Vx] << 1;
-            //         }
+                    // 8xyE - SHL Vx {, Vy}
+                    0xE => {
+                        self.reg[0xF] = (self.reg[Vx] >> 7) & 1;
+                        self.reg[Vx] = self.reg[Vx] << 1;
+                    }
 
-            //         _ => {
-            //             panic!("Invalid instruction: {:?}", op);
-            //         }
-            //     }
-            // }
+                    _ => {
+                        panic!("Invalid instruction: {:?}", op);
+                    }
+                }
+            }
 
             // 9xy0 - SNE Vx, Vy
-            // 0x9 => {
-            //     if self.reg[Vx] != self.reg[Vy] {
-            //         self.pc += 2
-            //     };
-            // }
+            0x9 => {
+                if self.reg[Vx] != self.reg[Vy] {
+                    self.pc += 2
+                };
+            }
 
             // Annn - LD I, addr
             0xA => {
@@ -249,21 +250,19 @@ impl Chip8 {
             }
 
             // Bnnn - JP V0, addr
-            // 0xB => {
-            //     self.pc = (self.reg[0x0] as u16) + addr;
-            // }
+            0xB => {
+                self.pc = (self.reg[0x0] as u16) + addr;
+            }
 
             // Cxkk - RND Vx, byte
-            // 0xC => {
-            //     self.reg[Vx] = (self.rng)() & byte;
-            // }
+            0xC => {
+                self.reg[Vx] = (self.rng)() & byte;
+            }
 
             // Dxyn - DRW Vx, Vy, nibble
             0xD => {
-                // let x = self.reg[vx] % (VIDEO_WIDTH as u8);
-                // let y = self.reg[vy] % (VIDEO_HEIGHT as u8);
-                let x = self.reg[vx];
-                let y = self.reg[vy];
+                let x = self.reg[Vx] as u16;
+                let y = self.reg[Vy] as u16;
                 let height = n;
 
                 self.reg[0xF] = 0;
@@ -271,16 +270,14 @@ impl Chip8 {
                 for dy in 0..height {
                     let sprite = self.mem[(self.i + dy as u16) as usize];
 
-                    println!("{:08b}", sprite);
-
-                    for dx in 0..8 {
-                        let sprite_pixel = (sprite & (0b1000_0000 >> dx));
+                    for dx in 0..8u16 {
                         let x = (x + dx) as usize % VIDEO_WIDTH;
                         let y = (y + dy) as usize % VIDEO_HEIGHT;
 
+                        let sprite_pixel = sprite & (0b1000_0000 >> dx);
                         let video_pixel = self.video[y * VIDEO_WIDTH + x].borrow_mut();
 
-                        if sprite_pixel == 1 {
+                        if sprite_pixel != 0 {
                             if *video_pixel {
                                 self.reg[0xF] = 1;
                             }
@@ -291,101 +288,101 @@ impl Chip8 {
                 }
             }
 
-            // 0xE => {
-            //     match byte {
-            //         // Ex9E - SKP Vx
-            //         0x9E => {
-            //             let key = self.reg[Vx] as usize;
-            //             if self.keypad[key] {
-            //                 self.pc += 2
-            //             };
-            //         }
+            0xE => {
+                match byte {
+                    // Ex9E - SKP Vx
+                    0x9E => {
+                        let key = self.reg[Vx] as usize;
+                        if self.keypad[key] {
+                            self.pc += 2
+                        };
+                    }
 
-            //         // ExA1 - SKNP Vx
-            //         0xA1 => {
-            //             let key = self.reg[Vx] as usize;
-            //             if !self.keypad[key] {
-            //                 self.pc += 2
-            //             };
-            //         }
+                    // ExA1 - SKNP Vx
+                    0xA1 => {
+                        let key = self.reg[Vx] as usize;
+                        if !self.keypad[key] {
+                            self.pc += 2
+                        };
+                    }
 
-            //         _ => {
-            //             panic!("Invalid instruction: {:#04X}", op);
-            //         }
-            //     }
-            // }
+                    _ => {
+                        panic!("Invalid instruction: {:#04X}", op);
+                    }
+                }
+            }
 
-            // 0xF => {
-            //     match byte {
-            //         // Fx07 - LD Vx, DT
-            //         0x07 => {
-            //             self.reg[Vx] = self.dt;
-            //         }
+            0xF => {
+                match byte {
+                    // Fx07 - LD Vx, DT
+                    0x07 => {
+                        self.reg[Vx] = self.dt;
+                    }
 
-            //         // Fx0A - LD Vx, K
-            //         0x0A => {
-            //             for i in 0..16 {
-            //                 if self.keypad[i as usize] {
-            //                     self.reg[Vx] = i;
-            //                     return;
-            //                 }
-            //             }
+                    // Fx0A - LD Vx, K
+                    0x0A => {
+                        for i in 0..16 {
+                            if self.keypad[i as usize] {
+                                self.reg[Vx] = i;
+                                return;
+                            }
+                        }
 
-            //             self.pc -= 2;
-            //         }
+                        self.pc -= 2;
+                    }
 
-            //         // Fx15 - LD DT, Vx
-            //         0x15 => {
-            //             self.dt = self.reg[Vx];
-            //         }
+                    // Fx15 - LD DT, Vx
+                    0x15 => {
+                        self.dt = self.reg[Vx];
+                    }
 
-            //         // Fx18 - LD ST, Vx
-            //         0x18 => {
-            //             self.st = self.reg[Vx];
-            //         }
+                    // Fx18 - LD ST, Vx
+                    0x18 => {
+                        self.st = self.reg[Vx];
+                    }
 
-            //         // Fx1E - ADD I, Vx
-            //         0x1E => {
-            //             self.i = self.i.wrapping_add(self.reg[Vx] as u16);
-            //         }
+                    // Fx1E - ADD I, Vx
+                    0x1E => {
+                        self.i = self.i.wrapping_add(self.reg[Vx] as u16);
+                    }
 
-            //         // Fx29 - LD F, Vx
-            //         0x29 => {
-            //             let digit = self.reg[Vx];
+                    // Fx29 - LD F, Vx
+                    0x29 => {
+                        let digit = self.reg[Vx];
 
-            //             self.i = FONTSET_START_ADDRESS as u16 + digit as u16 * 5;
-            //         }
+                        self.i = FONTSET_START_ADDRESS as u16 + digit as u16 * 5;
+                    }
 
-            //         // Fx33 - LD B, Vx
-            //         0x33 => {
-            //             let mut value = self.reg[Vx];
+                    // Fx33 - LD B, Vx
+                    0x33 => {
+                        let mut value = self.reg[Vx];
 
-            //             self.mem[self.i as usize + 2] = value % 10;
-            //             value /= 10;
-            //             self.mem[self.i as usize + 1] = value % 10;
-            //             value /= 10;
-            //             self.mem[self.i as usize] = value % 10;
-            //         }
+                        self.mem[self.i as usize + 2] = value % 10;
+                        value /= 10;
+                        self.mem[self.i as usize + 1] = value % 10;
+                        value /= 10;
+                        self.mem[self.i as usize] = value % 10;
+                    }
 
-            //         // Fx55 - LD [I], Vx
-            //         0x55 => {
-            //             for v in 0..Vx {
-            //                 self.mem[self.i as usize + v] = self.reg[v];
-            //             }
-            //         }
+                    // Fx55 - LD [I], Vx
+                    0x55 => {
+                        for v in 0..Vx {
+                            self.mem[self.i as usize + v] = self.reg[v];
+                        }
+                    }
 
-            //         // Fx65 - LD Vx, [I]
-            //         0x65 => {
-            //             for v in 0..Vx {
-            //                 self.reg[v] = self.mem[self.i as usize + v];
-            //             }
-            //         }
+                    // Fx65 - LD Vx, [I]
+                    0x65 => {
+                        for v in 0..Vx {
+                            self.reg[v] = self.mem[self.i as usize + v];
+                        }
+                    }
 
-            //         _ => {
-            //             panic!("Invalid instruction: {:#04X}", op);
-            //         }
-            //     }
-            // }
+                    _ => {
+                        panic!("Invalid instruction: {:#04X}", op);
+                    }
+                }
+            }
             _ => {
                 panic!("Invalid instruction: {:#04X}", op);
             }
