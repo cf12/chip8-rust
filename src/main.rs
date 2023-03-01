@@ -121,7 +121,7 @@ impl SDLGui {
     }
 
     pub fn run(&mut self) {
-        let fps = 30;
+        let fps = 10;
         let duration = Duration::new(0, 1_000_000_000 / (60 * fps));
 
         loop {

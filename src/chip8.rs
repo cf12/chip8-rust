@@ -83,7 +83,6 @@ impl Chip8 {
         new_emu.mem[FONTSET_START_ADDRESS..FONTSET_START_ADDRESS + FONTSET_SIZE]
             .copy_from_slice(&FONTSET);
 
-        new_emu.mem[0x1FF] = 2;
         new_emu
     }
 
@@ -322,7 +321,7 @@ impl Chip8 {
 
                     // Fx0A - LD Vx, K
                     0x0A => {
-                        for i in 0..16 {
+                        for i in 0..FONTSET_SIZE as u8 {
                             if self.keypad[i as usize] {
                                 self.reg[Vx] = i;
                                 return;
@@ -344,7 +343,7 @@ impl Chip8 {
 
                     // Fx1E - ADD I, Vx
                     0x1E => {
-                        self.i = self.i.wrapping_add(self.reg[Vx] as u16);
+                        self.i += self.reg[Vx] as u16;
                     }
 
                     // Fx29 - LD F, Vx
@@ -358,23 +357,23 @@ impl Chip8 {
                     0x33 => {
                         let mut value = self.reg[Vx];
 
-                        self.mem[self.i as usize + 2] = value % 10;
+                        self.mem[(self.i + 2) as usize] = value % 10;
                         value /= 10;
-                        self.mem[self.i as usize + 1] = value % 10;
+                        self.mem[(self.i + 1) as usize] = value % 10;
                         value /= 10;
                         self.mem[self.i as usize] = value % 10;
                     }
 
                     // Fx55 - LD [I], Vx
                     0x55 => {
-                        for v in 0..Vx {
+                        for v in 0..=Vx {
                             self.mem[self.i as usize + v] = self.reg[v];
                         }
                     }
 
                     // Fx65 - LD Vx, [I]
                     0x65 => {
-                        for v in 0..Vx {
+                        for v in 0..=Vx {
                             self.reg[v] = self.mem[self.i as usize + v];
                         }
                     }
