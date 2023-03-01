@@ -6,7 +6,6 @@ pub const VIDEO_HEIGHT: usize = 32;
 
 const MEMORY_SIZE: usize = 4096;
 const MEMORY_START: usize = 0x200;
-const STACK_SIZE: usize = 16;
 const NUM_KEYS: usize = 16;
 const NUM_REGS: usize = 16;
 
@@ -38,8 +37,7 @@ pub struct Chip8 {
 
     i: u16,
     pc: u16,
-    sp: u8,
-    stack: [u16; STACK_SIZE],
+    stack: Vec<u16>,
     video: [bool; VIDEO_HEIGHT * VIDEO_WIDTH],
     keypad: [bool; NUM_KEYS],
 
@@ -59,7 +57,6 @@ impl fmt::Display for Chip8 {
             ((self.mem[self.pc as usize] as u16) << 8) | (self.mem[(self.pc + 1) as usize] as u16);
 
         write!(f, "[pc]: {:#02X}\n", self.pc)?;
-        write!(f, "[sp]: {:#02X}\n", self.sp)?;
         write!(f, "[i]: {:#02X}\n", self.i)?;
         write!(f, "[opcode]: {:#04X}\n", op)
     }
@@ -73,8 +70,7 @@ impl Chip8 {
 
             i: 0,
             pc: MEMORY_START as u16,
-            sp: 0,
-            stack: [0; STACK_SIZE],
+            stack: vec![],
             video: [false; VIDEO_HEIGHT * VIDEO_WIDTH],
             keypad: [false; NUM_KEYS],
 
@@ -86,6 +82,8 @@ impl Chip8 {
 
         new_emu.mem[FONTSET_START_ADDRESS..FONTSET_START_ADDRESS + FONTSET_SIZE]
             .copy_from_slice(&FONTSET);
+
+        new_emu.mem[0x1FF] = 2;
         new_emu
     }
 
@@ -96,6 +94,10 @@ impl Chip8 {
 
     pub fn get_video(&self) -> &[bool] {
         return &self.video;
+    }
+
+    pub fn set_keypad(&mut self, key: usize, value: bool) {
+        self.keypad[key] = value;
     }
 
     pub fn cycle(&mut self) {
@@ -124,8 +126,7 @@ impl Chip8 {
 
                     // 00EE - RET
                     0x0EE => {
-                        self.sp -= 1;
-                        self.pc = self.stack[self.sp as usize];
+                        self.pc = self.stack.pop().unwrap();
                     }
 
                     // 0nnn - SYS addr
@@ -140,8 +141,7 @@ impl Chip8 {
 
             // 2nnn - CALL addr
             0x2 => {
-                self.stack[self.sp as usize] = self.pc;
-                self.sp += 1;
+                self.stack.push(self.pc);
                 self.pc = addr;
             }
 
@@ -178,6 +178,7 @@ impl Chip8 {
 
             0x8 => {
                 match n {
+                    // 8xy0 - LD Vx, Vy
                     0x0 => {
                         self.reg[Vx] = self.reg[Vy];
                     }
@@ -207,28 +208,28 @@ impl Chip8 {
 
                     // 8xy5 - SUB Vx, Vy
                     0x5 => {
-                        let (res, carry) = self.reg[Vx].overflowing_sub(self.reg[Vy]);
+                        let (res, borrow) = self.reg[Vx].overflowing_sub(self.reg[Vy]);
                         self.reg[Vx] = res;
-                        self.reg[0xF] = carry as u8;
+                        self.reg[0xF] = !borrow as u8;
                     }
 
                     // 8xy6 - SHR Vx {, Vy}
                     0x6 => {
                         self.reg[0xF] = self.reg[Vx] & 1;
-                        self.reg[Vx] = self.reg[Vx] >> 1;
+                        self.reg[Vx] >>= 1;
                     }
 
                     // 8xy7 - SUBN Vx, Vy
                     0x7 => {
-                        let (res, carry) = self.reg[Vy].overflowing_sub(self.reg[Vx]);
+                        let (res, borrow) = self.reg[Vy].overflowing_sub(self.reg[Vx]);
                         self.reg[Vx] = res;
-                        self.reg[0xF] = carry as u8;
+                        self.reg[0xF] = !borrow as u8;
                     }
 
                     // 8xyE - SHL Vx {, Vy}
                     0xE => {
                         self.reg[0xF] = (self.reg[Vx] >> 7) & 1;
-                        self.reg[Vx] = self.reg[Vx] << 1;
+                        self.reg[Vx] <<= 1;
                     }
 
                     _ => {
