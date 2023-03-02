@@ -321,7 +321,7 @@ impl Chip8 {
 
                     // Fx0A - LD Vx, K
                     0x0A => {
-                        for i in 0..FONTSET_SIZE as u8 {
+                        for i in 0..16 as u8 {
                             if self.keypad[i as usize] {
                                 self.reg[Vx] = i;
                                 return;
